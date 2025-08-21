@@ -38,7 +38,7 @@ cd $APP_DIR
 # 拉取最新代码
 echo "📥 拉取最新代码..."
 git fetch origin
-git reset --hard origin/main
+git reset --hard origin/backend
 echo "✅ 代码更新完成"
 
 # 检查配置文件
