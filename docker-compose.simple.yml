@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # 统一的微服务容器
+  social-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: social-app-all-services
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data/uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./ssl:/app/ssl:ro
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    networks:
+      - social-app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  # PostgreSQL数据库 (可选，如果使用华为云RDS则不需要)
+  postgres:
+    image: postgres:15-alpine
+    container_name: social-app-postgres
+    environment:
+      POSTGRES_DB: social_app
+      POSTGRES_USER: chat
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - social-app-network
+    restart: unless-stopped
+
+  # MongoDB数据库 (可选，如果使用华为云DDS则不需要)
+  mongodb:
+    image: mongo:6.0
+    container_name: social-app-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: social_app
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - social-app-network
+    restart: unless-stopped
+
+  # Redis缓存 (可选，如果使用华为云DCS则不需要)
+  redis:
+    image: redis:7-alpine
+    container_name: social-app-redis
+    command: redis-server --requirepass password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - social-app-network
+    restart: unless-stopped
+
+networks:
+  social-app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
